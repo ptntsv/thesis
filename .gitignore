@@ -1,0 +1,6 @@
+/target/
+*.pdf
+.DS_Store
+/build
+spot-2.16/
+.git/
