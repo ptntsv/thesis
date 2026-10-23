@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 project(thesis)
 
-set(CMAKE_CXX_COMPILER "/usr/bin/g++")
 set(CMAKE_CXX_FLAGS "-Wall -g -fsanitize=address")
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -18,7 +17,29 @@ if(NOT SPOT_INCLUDE_DIR OR NOT SPOT_LIB)
     message(FATAL_ERROR "Spot didn't found in ${SPOT_ROOT}")
 endif()
 
-add_executable(checker main.cpp)
+add_library(checker_core STATIC checker.cpp)
 
-target_include_directories(checker SYSTEM PRIVATE ${SPOT_INCLUDE_DIR})
-target_link_libraries(checker PRIVATE ${SPOT_LIB} ${BDDX_LIB})
+target_include_directories(checker_core PUBLIC ${CMAKE_SOURCE_DIR})
+target_include_directories(checker_core SYSTEM PUBLIC ${SPOT_INCLUDE_DIR})
+target_link_libraries(checker_core PUBLIC ${SPOT_LIB} ${BDDX_LIB})
+
+add_executable(checker main.cpp)
+target_link_libraries(checker PRIVATE checker_core)
+
+option(CHECKER_BUILD_TESTS "Build unit tests (downloads Catch2)" ON)
+if(CHECKER_BUILD_TESTS)
+    include(FetchContent)
+    FetchContent_Declare(Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG v3.7.1
+        GIT_SHALLOW TRUE)
+    FetchContent_MakeAvailable(Catch2)
+    list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+
+    add_executable(tests tests/test_checker.cpp)
+    target_link_libraries(tests PRIVATE checker_core Catch2::Catch2WithMain)
+
+    enable_testing()
+    include(Catch)
+    catch_discover_tests(tests)
+endif()
